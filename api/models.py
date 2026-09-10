@@ -180,6 +180,62 @@ class ResumeScore(models.Model):
         ordering = ['id']
 
 
+class SourcingSearch(models.Model):
+    """A recruiter-initiated candidate search for a job requirement."""
+    job = models.ForeignKey(
+        JobPost, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sourcing_searches',
+    )
+    job_title = models.CharField(max_length=255, default='', blank=True)
+    job_description = models.TextField()
+    requirements = models.JSONField(default=dict, blank=True)
+    sources = models.JSONField(default=list, blank=True)
+    status = models.CharField(max_length=30, default='pending')
+    requested_by_email = models.CharField(max_length=255, default='', blank=True, db_index=True)
+    result_count = models.PositiveIntegerField(default=0)
+    error = models.TextField(default='', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'sourcing_searches'
+        ordering = ['-created_at']
+
+
+class SourcingResult(models.Model):
+    """A normalized, explainable match returned by a sourcing connector."""
+    search = models.ForeignKey(
+        SourcingSearch, on_delete=models.CASCADE, related_name='results'
+    )
+    resume = models.ForeignKey(
+        ResumeScore, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='sourcing_results',
+    )
+    source = models.CharField(max_length=100, default='internal')
+    external_id = models.CharField(max_length=255, default='', blank=True)
+    candidate_name = models.CharField(max_length=255)
+    candidate_role = models.CharField(max_length=255, default='', blank=True)
+    profile_url = models.TextField(default='', blank=True)
+    normalized_profile = models.JSONField(default=dict, blank=True)
+    match_score = models.PositiveSmallIntegerField(default=0)
+    explanation = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=30, default='new')
+    feedback = models.TextField(default='', blank=True)
+    reviewed_by_email = models.CharField(max_length=255, default='', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'sourcing_results'
+        ordering = ['-match_score', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['search', 'source', 'external_id'],
+                name='unique_sourcing_result_per_source',
+            ),
+        ]
+
+
 class InterviewRecording(models.Model):
     candidate_name = models.CharField(max_length=255)
     candidate_email = models.CharField(max_length=255, default='', blank=True)

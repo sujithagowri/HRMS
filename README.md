@@ -161,6 +161,27 @@ decorators in `api/permissions.py`. Route groups:
 
 See `api/urls.py` for the authoritative, complete list of routes.
 
+### Candidate sourcing MVP
+
+The sourcing API ranks resumes already stored in HRMS against an existing job
+or a supplied job description. It extracts common skills and minimum experience,
+stores an explainable score for every result, and supports recruiter feedback and
+shortlisting. Currently `internal` is the only enabled source; external job-board
+connectors require provider-approved API access.
+
+```http
+POST /api/sourcing/searches
+X-User-Email: recruiter@example.com
+Content-Type: application/json
+
+{"jobId": 42, "sources": ["internal"]}
+```
+
+Other endpoints are `GET /api/sourcing/searches`,
+`GET /api/sourcing/searches/<id>`, `GET /api/sourcing/searches/<id>/results`,
+`POST /api/sourcing/results/<id>/shortlist`, and
+`POST /api/sourcing/results/<id>/feedback`.
+
 ---
 
 ## Deployment (GoDaddy cPanel + GitHub Actions)

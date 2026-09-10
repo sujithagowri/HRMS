@@ -66,6 +66,10 @@ class Command(BaseCommand):
                 # "Org View" exposes every recruiter's, so they are granted separately.
                 {'name': 'KPI Dashboard — My View', 'code': 'recruitment.kpi.view_own', 'group': 'Recruitment Group'},
                 {'name': 'KPI Dashboard — Org View', 'code': 'recruitment.kpi.view_org', 'group': 'Recruitment Group'},
+                {'name': 'View Candidate Sourcing', 'code': 'sourcing.view', 'group': 'Recruitment Group'},
+                {'name': 'Run Candidate Searches', 'code': 'sourcing.search', 'group': 'Recruitment Group'},
+                {'name': 'Review Sourcing Results', 'code': 'sourcing.review', 'group': 'Recruitment Group'},
+                {'name': 'Shortlist Sourced Candidates', 'code': 'sourcing.shortlist', 'group': 'Recruitment Group'},
                 # Employees
                 {'name': 'View Employee Data', 'code': 'employee.view', 'group': 'Employee Group'},
                 {'name': 'Create Employee/Tasks', 'code': 'employee.create', 'group': 'Employee Group'},
@@ -179,6 +183,8 @@ class Command(BaseCommand):
                 'HR Executive': [
                     'recruitment.view', 'recruitment.create', 'recruitment.edit',
                     'recruitment.kpi.view_own',
+                    'sourcing.view', 'sourcing.search', 'sourcing.review',
+                    'sourcing.shortlist',
                     'employee.view', 'submission.view_all', 'task.edit',
                     'attendance.view', 'leave.view', 'settings.view',
                     # HR Executive is the recruiter today: creates and edits the
@@ -194,6 +200,8 @@ class Command(BaseCommand):
                 'Recruiter': [
                     'recruitment.view', 'recruitment.create', 'recruitment.edit',
                     'recruitment.kpi.view_own', 'settings.view',
+                    'sourcing.view', 'sourcing.search', 'sourcing.review',
+                    'sourcing.shortlist',
                     'onboarding.view', 'onboarding.create', 'onboarding.edit',
                 ],
                 'Manager': [

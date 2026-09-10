@@ -1,7 +1,8 @@
 from django.urls import path
 
 from . import (auth_views, email_template_views, linkedin_oauth, live_views, views,
-               attendance_views, job_form_views, onboarding_views, payroll_views)
+               attendance_views, job_form_views, onboarding_views, payroll_views,
+               sourcing_views)
 
 # All paths are relative to the "/api/" prefix from the project urlconf.
 urlpatterns = [
@@ -60,6 +61,14 @@ urlpatterns = [
     path('resume-scores', views.resume_scores),
     path('resume-scores/<int:pk>', views.resume_score_detail),
     path('resume-scores/<int:pk>/file', views.resume_score_file),
+
+    # Candidate sourcing — internal resumes today; approved providers plug into
+    # api/services/sourcing/connectors without changing the public API.
+    path('sourcing/searches', sourcing_views.sourcing_searches),
+    path('sourcing/searches/<int:pk>', sourcing_views.sourcing_search_detail),
+    path('sourcing/searches/<int:pk>/results', sourcing_views.sourcing_search_results),
+    path('sourcing/results/<int:pk>/shortlist', sourcing_views.sourcing_result_shortlist),
+    path('sourcing/results/<int:pk>/feedback', sourcing_views.sourcing_result_feedback),
 
     path('interview-recordings', views.recordings),
     path('interview-recordings/<int:pk>', views.recording_detail),
