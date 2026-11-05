@@ -249,6 +249,11 @@ class InterviewRecording(models.Model):
     recording_data = models.TextField(null=True, blank=True)   # base64 video
     video_buffer = models.BinaryField(null=True, blank=True)   # raw LONGBLOB
     video_mime = models.CharField(max_length=100, null=True, blank=True)
+    client_upload_id = models.UUIDField(null=True, blank=True, unique=True)
+    video_status = models.CharField(max_length=16, default='pending', choices=[
+        ('pending', 'Pending upload'), ('ready', 'Ready'), ('failed', 'Upload failed'),
+    ])
+    video_error = models.CharField(max_length=255, default='', blank=True)
     transcript = models.TextField(null=True, blank=True)
     responses = models.JSONField(null=True, blank=True)
     ai_evaluation = models.JSONField(null=True, blank=True)

@@ -1325,6 +1325,22 @@ def recordings(request):
     serializer = InterviewRecordingSerializer(data=body)
     if not serializer.is_valid():
         return serializer_err(serializer)
+    upload_id = serializer.validated_data.get('client_upload_id')
+    if upload_id:
+        # A lost response must not create another interview on retry. The
+        # unique UUID also makes concurrent retries converge on the same row.
+        defaults = dict(serializer.validated_data)
+        defaults.pop('client_upload_id')
+        if not isinstance(defaults.get('responses'), list):
+            defaults['responses'] = []
+        with transaction.atomic():
+            obj, created = InterviewRecording.objects.get_or_create(
+                client_upload_id=upload_id, defaults=defaults,
+            )
+            if created:
+                _mark_interview_taken(obj.candidate_email, obj.role, obj.total_score)
+        return Response(InterviewRecordingSerializer(obj).data,
+                        status=201 if created else 200)
     serializer.save()
     _mark_interview_taken(body.get('candidateEmail'), body.get('role'), body.get('totalScore'))
     return Response(serializer.data, status=201)
@@ -1462,17 +1478,34 @@ def recording_video(request, pk):
     GET: Serves uncorrupted binary video data with HTTP Range request support (206 Partial Content).
     """
     if request.method == 'POST':
-        if not InterviewRecording.objects.filter(pk=pk).exists():
+        qs = InterviewRecording.objects.filter(pk=pk)
+        if not qs.exists():
             return err('Recording not found', 404)
-        data = request.body
-        if not data:
-            return err('Invalid or empty video payload')
-        mime = (request.META.get('CONTENT_TYPE') or 'video/webm').split(';')[0]
-        InterviewRecording.objects.filter(pk=pk).update(
-            video_buffer=data,
-            video_mime=mime,
-        )
-        return JsonResponse({'ok': True})
+        # A rejected retry must not invalidate an already stored recording.
+        missing = qs.filter(Q(video_buffer__isnull=True) | Q(video_buffer=b''))
+        missing = missing.filter(Q(recording_data__isnull=True) | Q(recording_data=''))
+        try:
+            data = request.body
+            mime = (request.META.get('CONTENT_TYPE') or 'video/webm').split(';')[0].strip().lower()
+            if not data or mime not in ('video/webm', 'video/mp4', 'video/ogg'):
+                message = 'Empty video payload' if not data else 'Unsupported video type'
+                missing.update(video_status='failed', video_error=message)
+                return err(message, 400)
+            valid_header = (
+                (mime == 'video/webm' and data.startswith(b'\x1a\x45\xdf\xa3')) or
+                (mime == 'video/mp4' and data[4:8] == b'ftyp') or
+                (mime == 'video/ogg' and data.startswith(b'OggS'))
+            )
+            if not valid_header:
+                missing.update(video_status='failed', video_error='Invalid video file header')
+                return err('Invalid video file header', 400)
+            qs.update(video_buffer=data, video_mime=mime,
+                      video_status='ready', video_error='')
+            return JsonResponse({'ok': True, 'videoStatus': 'ready', 'videoBytes': len(data)})
+        except Exception:
+            logger.exception('Video upload failed for recording %s', pk)
+            missing.update(video_status='failed', video_error='Video upload failed. Please retry.')
+            return err('Video upload failed. Please retry.', 500)
 
     if request.method != 'GET':
         return err('Method not allowed', 405)
