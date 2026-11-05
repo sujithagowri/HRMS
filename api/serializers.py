@@ -453,6 +453,8 @@ class InterviewRecordingSerializer(serializers.ModelSerializer):
     """Recording metadata (the list/create shape). The heavy ``recording_data``
     base64 blob is write-only here; the detail view adds it back explicitly."""
     candidateName = serializers.CharField(source='candidate_name')
+    clientUploadId = serializers.UUIDField(source='client_upload_id', required=False,
+                                           allow_null=True, write_only=True)
     candidateEmail = serializers.CharField(source='candidate_email', required=False, allow_blank=True, default='')
     totalScore = serializers.IntegerField(source='total_score', required=False, default=0)
     techScore = serializers.IntegerField(source='tech_score', required=False, default=0)
@@ -468,7 +470,7 @@ class InterviewRecordingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'candidateName', 'candidateEmail', 'role', 'duration', 'verdict',
             'totalScore', 'techScore', 'commScore', 'integrityScore',
-            'transcript', 'responses', 'recordingData',
+            'transcript', 'responses', 'recordingData', 'clientUploadId',
             'aiEvaluation', 'executiveSummary', 'round2Questions',
         ]
         read_only_fields = ['id']
@@ -493,11 +495,10 @@ class InterviewRecordingSerializer(serializers.ModelSerializer):
         has_video = getattr(instance, '_has_video', None)
         if has_video is None:                       # unannotated (detail view)
             # True when either binary LONGBLOB *or* legacy base64 column has data.
-            has_video = (instance.video_buffer is not None
-                         or instance.recording_data is not None)
+            has_video = bool(instance.video_buffer or instance.recording_data)
         has_recording = getattr(instance, '_has_recording', None)
         if has_recording is None:
-            has_recording = instance.recording_data is not None
+            has_recording = bool(instance.recording_data)
 
         return {
             'id': instance.id,
@@ -512,6 +513,9 @@ class InterviewRecordingSerializer(serializers.ModelSerializer):
             'integrityScore': instance.integrity_score,
             'hasVideo': bool(has_video),
             'hasRecording': bool(has_recording),
+            'videoStatus': 'ready' if has_video else instance.video_status,
+            'videoError': '' if has_video else instance.video_error,
+            'videoMime': instance.video_mime or 'video/webm',
             'transcript': instance.transcript,
             'responses': safe_list(instance.responses),
             'aiEvaluation': instance.ai_evaluation if isinstance(instance.ai_evaluation, dict) else {},
